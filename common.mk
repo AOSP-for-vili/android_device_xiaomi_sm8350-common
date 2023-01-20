@@ -163,7 +163,8 @@ PRODUCT_PACKAGES += \
 
 # Fingerprint
 PRODUCT_PACKAGES += \
-    android.hardware.biometrics.fingerprint@2.3-service.xiaomi
+    android.hardware.biometrics.fingerprint@2.3-service.xiaomi_vili \
+    vendor.xiaomi.hardware.fingerprintextension@1.0.vendor
 
 ifeq ($(TARGET_HAS_UDFPS),true)
 PRODUCT_PACKAGES += \
