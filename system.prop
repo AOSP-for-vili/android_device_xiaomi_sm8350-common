@@ -32,6 +32,7 @@ persist.log.tag.ContrastColorUtil=S
 persist.log.tag.OpenGLRenderer=S
 persist.log.tag.ultrasound_extn=S
 persist.log.tag.minksocket=S
+persist.log.tag.HWUI=S
 
 # IMS
 persist.dbg.volte_avail_ovr=1
