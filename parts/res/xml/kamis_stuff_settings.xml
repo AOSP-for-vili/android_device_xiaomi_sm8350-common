@@ -8,4 +8,10 @@
         android:summary="@string/core_control_summary"
         android:icon="@drawable/ic_cpu" />
 
+    <Preference
+        android:key="kernel_manager"
+        android:title="@string/kernel_manager_title"
+        android:summary="@string/kernel_manager_summary"
+        android:icon="@drawable/ic_kernel_manager" />
+
 </PreferenceScreen>
