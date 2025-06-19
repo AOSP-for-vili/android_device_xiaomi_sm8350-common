@@ -22,10 +22,12 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragment;
 import org.lineageos.settings.R;
 import org.lineageos.settings.corecontrol.CoreControlActivity;
+import org.lineageos.settings.kernelmanager.KernelManagerActivity;
 
 public class KamisStuffFragment extends PreferenceFragment {
 
     private static final String KEY_CORE_CONTROL = "core_control";
+    private static final String KEY_KERNEL_MANAGER = "kernel_manager";
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -36,6 +38,16 @@ public class KamisStuffFragment extends PreferenceFragment {
         if (coreControlPref != null) {
             coreControlPref.setOnPreferenceClickListener(preference -> {
                 Intent intent = new Intent(getActivity(), CoreControlActivity.class);
+                startActivity(intent);
+                return true;
+            });
+        }
+
+        // Kernel Manager preference
+        Preference kernelManagerPref = findPreference(KEY_KERNEL_MANAGER);
+        if (kernelManagerPref != null) {
+            kernelManagerPref.setOnPreferenceClickListener(preference -> {
+                Intent intent = new Intent(getActivity(), KernelManagerActivity.class);
                 startActivity(intent);
                 return true;
             });
