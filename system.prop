@@ -33,6 +33,8 @@ persist.log.tag.OpenGLRenderer=S
 persist.log.tag.ultrasound_extn=S
 persist.log.tag.minksocket=S
 persist.log.tag.HWUI=S
+persist.log.tag.QC2Buf=W
+persist.log.tag.QC2V4l2Codec=E
 
 # IMS
 persist.dbg.volte_avail_ovr=1
