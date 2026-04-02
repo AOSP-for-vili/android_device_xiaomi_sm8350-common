@@ -1,4 +1,2 @@
-type sysfs_htsr, sysfs_type, fs_type;
-
 # Core Control
 type vendor_sysfs_corecontrol, fs_type, sysfs_type;

@@ -37,8 +37,6 @@ public class BootCompletedReceiver extends BroadcastReceiver {
     private static final String TAG = "XiaomiParts";
     private static final String DC_DIMMING_ENABLE_KEY = "dc_dimming_enable";
     private static final String DC_DIMMING_NODE = "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/dimlayer_exposure";
-    private static final String HTSR_ENABLE_KEY = "htsr_enable";
-    private static final String HTSR_FILE = "/sys/devices/virtual/touch/touch_dev/bump_sample_rate";
 
     // init starts the kernel post-boot script when sys.boot_completed is set, which happens
     // around the same time ACTION_BOOT_COMPLETED is sent. Give it time to finish before the
@@ -63,10 +61,6 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         ThermalUtils.startService(context);
         RefreshUtils.startService(context);    
         
-        // Touch Sampling
-        boolean HTSREnabled = sharedPrefs.getBoolean(HTSR_ENABLE_KEY, false);
-        FileUtils.writeLine(HTSR_FILE, HTSREnabled ? "1" : "0");
-
         // DC Dimming
         FileUtils.enableService(context);
         boolean dcDimmingEnabled = sharedPrefs.getBoolean(DC_DIMMING_ENABLE_KEY, false);
