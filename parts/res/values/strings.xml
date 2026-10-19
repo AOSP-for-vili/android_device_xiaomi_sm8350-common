@@ -35,6 +35,8 @@
     <string name="refresh_extreme">120Hz</string>
 
     <!-- Doze Strings -->
+    <string name="doze_settings_help_title">Ambient display</string>
+    <string name="doze_settings_help_text">Enable ambient display to use the always-on display. On supported devices, you can also adjust its brightness.</string>
     <string name="doze_brightness_low">Low brightness</string>
     <string name="doze_brightness_high">High brightness</string>
     <string name="doze_brightness_adaptive">Adaptive brightness</string>
