@@ -99,11 +99,18 @@
     <string name="prime_cluster_title">Prime Cluster</string>
     <string name="kernel_info_category">Information</string>
     <string name="kernel_info_title">About Kernel Manager</string>
-    <string name="kernel_info_summary">Manage CPU governor and frequency scaling for all CPU clusters. Changes may affect performance and battery life.</string>
+    <string name="kernel_info_summary">Manage CPU governor and frequency scaling for all CPU clusters. Applied changes are restored on boot until you reset them.</string>
     <string name="apply_settings">Apply Settings</string>
     <string name="reset_settings">Reset to Default</string>
+    <string name="apply_settings_summary">Apply current frequency and governor settings</string>
+    <string name="reset_settings_summary">Restore kernel defaults and stop applying saved changes on boot</string>
     <string name="settings_applied">Settings applied successfully</string>
+    <string name="settings_apply_failed">Some settings could not be applied</string>
     <string name="settings_reset">Settings reset to default</string>
+    <string name="settings_reset_failed">Some settings could not be reset</string>
+    <string name="settings_no_changes">No applied settings to reset</string>
+    <string name="invalid_frequency_range">Minimum frequency must not exceed maximum frequency</string>
+    <string name="value_unavailable">Unavailable</string>
 
     <!-- GPU Manager -->
     <string name="gpu_manager_title">GPU Manager</string>
@@ -128,6 +135,7 @@
     <string name="gpu_thermal_title">Thermal Settings</string>
     <string name="gpu_thermal_pwrlevel_title">Thermal Power Level</string>
     <string name="gpu_thermal_pwrlevel_summary">Current thermal power level</string>
+    <string name="gpu_thermal_pwrlevel_value">Level %s</string>
     <string name="gpu_temp_title">GPU Temperature</string>
     <string name="gpu_info_title">GPU Information</string>
     <string name="gpu_model_title">GPU Model</string>
@@ -137,6 +145,9 @@
     <string name="gpu_info_category">GPU Information</string>
     <string name="gpu_settings_category">GPU Settings</string>
     <string name="gpu_advanced_category">Advanced Settings</string>
-    <string name="gpu_info_summary">Manage GPU frequency scaling and power settings. Changes may affect performance and battery life.</string>
+    <string name="gpu_apply_settings_summary">Apply the current GPU frequency and governor settings</string>
+    <string name="gpu_reset_settings_summary">Restore kernel defaults and stop applying saved GPU changes on boot</string>
+    <string name="gpu_setting_update_failed">Could not update the GPU setting</string>
+    <string name="gpu_info_summary">Manage GPU frequency scaling and power settings. Applied changes are restored on boot until you reset them.</string>
 
 </resources>

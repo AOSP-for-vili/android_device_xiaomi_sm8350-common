@@ -10,7 +10,10 @@
 
 package org.lineageos.settings.kernelmanager;
 
+import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
@@ -29,39 +32,68 @@ public class KernelManagerFragment extends PreferenceFragment
     private static final String KEY_PRIME_MAX_FREQ = "prime_max_freq";
     private static final String KEY_APPLY_SETTINGS = "apply_settings";
     private static final String KEY_RESET_SETTINGS = "reset_settings";
-    
+
     private KernelManagerUtils mKernelUtils;
+    private Handler mHandler;
     private ListPreference mGovernorPreference;
-    private ListPreference mEfficiencyMinFreq, mEfficiencyMaxFreq;
-    private ListPreference mPerformanceMinFreq, mPerformanceMaxFreq;
-    private ListPreference mPrimeMinFreq, mPrimeMaxFreq;
+    private ClusterPreferences[] mClusters;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.kernel_manager_settings, rootKey);
         mKernelUtils = new KernelManagerUtils();
-        
+        mHandler = new Handler(Looper.getMainLooper());
+
         initializePreferences();
         loadCurrentSettings();
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mKernelUtils != null) {
+            loadCurrentSettings();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mHandler != null) {
+            mHandler.removeCallbacksAndMessages(null);
+        }
+    }
+
     private void initializePreferences() {
         mGovernorPreference = (ListPreference) findPreference(KEY_CPU_GOVERNOR);
-        mEfficiencyMinFreq = (ListPreference) findPreference(KEY_EFFICIENCY_MIN_FREQ);
-        mEfficiencyMaxFreq = (ListPreference) findPreference(KEY_EFFICIENCY_MAX_FREQ);
-        mPerformanceMinFreq = (ListPreference) findPreference(KEY_PERFORMANCE_MIN_FREQ);
-        mPerformanceMaxFreq = (ListPreference) findPreference(KEY_PERFORMANCE_MAX_FREQ);
-        mPrimeMinFreq = (ListPreference) findPreference(KEY_PRIME_MIN_FREQ);
-        mPrimeMaxFreq = (ListPreference) findPreference(KEY_PRIME_MAX_FREQ);
-        
-        // Set listeners
         if (mGovernorPreference != null) {
+            mGovernorPreference.setPersistent(false);
             mGovernorPreference.setOnPreferenceChangeListener(this);
         }
-        
-        setFrequencyPreferenceListeners();
-        
-        // Apply and Reset buttons
+
+        mClusters = new ClusterPreferences[]{
+                new ClusterPreferences(KernelManagerUtils.EFFICIENCY_CLUSTER,
+                        (ListPreference) findPreference(KEY_EFFICIENCY_MIN_FREQ),
+                        (ListPreference) findPreference(KEY_EFFICIENCY_MAX_FREQ)),
+                new ClusterPreferences(KernelManagerUtils.PERFORMANCE_CLUSTER,
+                        (ListPreference) findPreference(KEY_PERFORMANCE_MIN_FREQ),
+                        (ListPreference) findPreference(KEY_PERFORMANCE_MAX_FREQ)),
+                new ClusterPreferences(KernelManagerUtils.PRIME_CLUSTER,
+                        (ListPreference) findPreference(KEY_PRIME_MIN_FREQ),
+                        (ListPreference) findPreference(KEY_PRIME_MAX_FREQ))
+        };
+
+        for (ClusterPreferences cluster : mClusters) {
+            if (cluster.minPreference != null) {
+                cluster.minPreference.setPersistent(false);
+                cluster.minPreference.setOnPreferenceChangeListener(this);
+            }
+            if (cluster.maxPreference != null) {
+                cluster.maxPreference.setPersistent(false);
+                cluster.maxPreference.setOnPreferenceChangeListener(this);
+            }
+        }
+
         Preference applyPref = findPreference(KEY_APPLY_SETTINGS);
         if (applyPref != null) {
             applyPref.setOnPreferenceClickListener(preference -> {
@@ -69,7 +101,7 @@ public class KernelManagerFragment extends PreferenceFragment
                 return true;
             });
         }
-        
+
         Preference resetPref = findPreference(KEY_RESET_SETTINGS);
         if (resetPref != null) {
             resetPref.setOnPreferenceClickListener(preference -> {
@@ -79,109 +111,219 @@ public class KernelManagerFragment extends PreferenceFragment
         }
     }
 
-    private void setFrequencyPreferenceListeners() {
-        if (mEfficiencyMinFreq != null) mEfficiencyMinFreq.setOnPreferenceChangeListener(this);
-        if (mEfficiencyMaxFreq != null) mEfficiencyMaxFreq.setOnPreferenceChangeListener(this);
-        if (mPerformanceMinFreq != null) mPerformanceMinFreq.setOnPreferenceChangeListener(this);
-        if (mPerformanceMaxFreq != null) mPerformanceMaxFreq.setOnPreferenceChangeListener(this);
-        if (mPrimeMinFreq != null) mPrimeMinFreq.setOnPreferenceChangeListener(this);
-        if (mPrimeMaxFreq != null) mPrimeMaxFreq.setOnPreferenceChangeListener(this);
+    private void loadCurrentSettings() {
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+
+        loadGovernor(context);
+        for (ClusterPreferences cluster : mClusters) {
+            loadFrequenciesForCluster(context, cluster);
+        }
     }
 
-    private void loadCurrentSettings() {
-        // Load available governors
+    private void loadGovernor(Context context) {
+        if (mGovernorPreference == null) {
+            return;
+        }
+
         String[] governors = mKernelUtils.getAvailableGovernors();
-        if (governors != null && mGovernorPreference != null) {
+        if (governors != null && governors.length > 0) {
             mGovernorPreference.setEntries(governors);
             mGovernorPreference.setEntryValues(governors);
-            String currentGovernor = mKernelUtils.getCurrentGovernor(KernelManagerUtils.EFFICIENCY_CLUSTER);
-            mGovernorPreference.setValue(currentGovernor);
-            mGovernorPreference.setSummary(getString(R.string.cpu_governor_summary, currentGovernor));
         }
-        
-        // Load available frequencies for each cluster
-        loadFrequenciesForCluster(KernelManagerUtils.EFFICIENCY_CLUSTER, mEfficiencyMinFreq, mEfficiencyMaxFreq);
-        loadFrequenciesForCluster(KernelManagerUtils.PERFORMANCE_CLUSTER, mPerformanceMinFreq, mPerformanceMaxFreq);
-        loadFrequenciesForCluster(KernelManagerUtils.PRIME_CLUSTER, mPrimeMinFreq, mPrimeMaxFreq);
+
+        // Show the value the user applied (or the boot default) rather than the live
+        // kernel value, which is the aggregate of all PM QoS requests.
+        String currentGovernor = mKernelUtils.getDisplayedGovernor(context);
+        mGovernorPreference.setValue(currentGovernor);
+        if (currentGovernor != null) {
+            mGovernorPreference.setSummary(
+                    getString(R.string.cpu_governor_summary, currentGovernor));
+        } else {
+            mGovernorPreference.setSummary(R.string.value_unavailable);
+        }
     }
 
-    private void loadFrequenciesForCluster(int cluster, ListPreference minPref, ListPreference maxPref) {
-        String[] frequencies = mKernelUtils.getAvailableFrequencies(cluster);
-        if (frequencies != null) {
+    private void loadFrequenciesForCluster(Context context, ClusterPreferences cluster) {
+        String currentMin = mKernelUtils.getDisplayedMinFrequency(context, cluster.cluster);
+        String currentMax = mKernelUtils.getDisplayedMaxFrequency(context, cluster.cluster);
+        String[] frequencies = mKernelUtils.getSelectableFrequencies(
+                cluster.cluster, currentMin, currentMax);
+
+        if (frequencies != null && frequencies.length > 0) {
             String[] frequencyLabels = new String[frequencies.length];
             for (int i = 0; i < frequencies.length; i++) {
-                int freqMhz = Integer.parseInt(frequencies[i]) / 1000;
-                frequencyLabels[i] = freqMhz + " MHz";
+                frequencyLabels[i] = formatFrequency(frequencies[i]);
             }
-            
-            if (minPref != null) {
-                minPref.setEntries(frequencyLabels);
-                minPref.setEntryValues(frequencies);
-                String currentMinFreq = mKernelUtils.getCurrentMinFrequency(cluster);
-                minPref.setValue(currentMinFreq);
-                int minFreqMhz = Integer.parseInt(currentMinFreq) / 1000;
-                minPref.setSummary(minFreqMhz + " MHz");
+
+            if (cluster.minPreference != null) {
+                cluster.minPreference.setEntries(frequencyLabels);
+                cluster.minPreference.setEntryValues(frequencies);
             }
-            
-            if (maxPref != null) {
-                maxPref.setEntries(frequencyLabels);
-                maxPref.setEntryValues(frequencies);
-                String currentMaxFreq = mKernelUtils.getCurrentMaxFrequency(cluster);
-                maxPref.setValue(currentMaxFreq);
-                int maxFreqMhz = Integer.parseInt(currentMaxFreq) / 1000;
-                maxPref.setSummary(maxFreqMhz + " MHz");
+            if (cluster.maxPreference != null) {
+                cluster.maxPreference.setEntries(frequencyLabels);
+                cluster.maxPreference.setEntryValues(frequencies);
             }
+        }
+
+        if (cluster.minPreference != null) {
+            cluster.minPreference.setValue(currentMin);
+            cluster.minPreference.setSummary(formatFrequency(currentMin));
+        }
+        if (cluster.maxPreference != null) {
+            cluster.maxPreference.setValue(currentMax);
+            cluster.maxPreference.setSummary(formatFrequency(currentMax));
         }
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        String key = preference.getKey();
+        if (!(newValue instanceof String)) {
+            return false;
+        }
+
         String value = (String) newValue;
-        
-        if (KEY_CPU_GOVERNOR.equals(key)) {
-            mGovernorPreference.setSummary(getString(R.string.cpu_governor_summary, value));
-            return true;
-        } else if (key.contains("freq")) {
-            int freqMhz = Integer.parseInt(value) / 1000;
-            preference.setSummary(freqMhz + " MHz");
+        if (KEY_CPU_GOVERNOR.equals(preference.getKey())) {
+            if (value.isEmpty()) {
+                return false;
+            }
+            preference.setSummary(getString(R.string.cpu_governor_summary, value));
             return true;
         }
-        
-        return false;
+
+        ClusterPreferences cluster = findCluster(preference);
+        if (cluster == null || parseFrequency(value) == null) {
+            return false;
+        }
+
+        String minValue = cluster.minPreference == preference
+                ? value : getValue(cluster.minPreference);
+        String maxValue = cluster.maxPreference == preference
+                ? value : getValue(cluster.maxPreference);
+        Long minFreq = parseFrequency(minValue);
+        Long maxFreq = parseFrequency(maxValue);
+        if (minFreq != null && maxFreq != null && minFreq > maxFreq) {
+            showToast(R.string.invalid_frequency_range);
+            return false;
+        }
+
+        preference.setSummary(formatFrequency(value));
+        return true;
+    }
+
+    private ClusterPreferences findCluster(Preference preference) {
+        for (ClusterPreferences cluster : mClusters) {
+            if (cluster.minPreference == preference || cluster.maxPreference == preference) {
+                return cluster;
+            }
+        }
+        return null;
     }
 
     private void applySettings() {
-        // Apply governor
-        if (mGovernorPreference != null) {
-            String governor = mGovernorPreference.getValue();
-            mKernelUtils.setGovernor(governor);
+        final Context context = getContext();
+        if (context == null) {
+            return;
         }
-        
-        // Apply frequencies
-        applyFrequencySettings();
-        
-        Toast.makeText(getContext(), R.string.settings_applied, Toast.LENGTH_SHORT).show();
-    }
 
-    private void applyFrequencySettings() {
-        if (mEfficiencyMinFreq != null && mEfficiencyMaxFreq != null) {
-            mKernelUtils.setEfficiencyClusterFrequency(
-                mEfficiencyMinFreq.getValue(), mEfficiencyMaxFreq.getValue());
+        final Context appContext = context.getApplicationContext();
+        final String governor = getValue(mGovernorPreference);
+        final int clusterCount = mClusters.length;
+        final int[] clusters = new int[clusterCount];
+        final String[] minFreqs = new String[clusterCount];
+        final String[] maxFreqs = new String[clusterCount];
+        for (int i = 0; i < clusterCount; i++) {
+            clusters[i] = mClusters[i].cluster;
+            minFreqs[i] = getValue(mClusters[i].minPreference);
+            maxFreqs[i] = getValue(mClusters[i].maxPreference);
         }
-        if (mPerformanceMinFreq != null && mPerformanceMaxFreq != null) {
-            mKernelUtils.setPerformanceClusterFrequency(
-                mPerformanceMinFreq.getValue(), mPerformanceMaxFreq.getValue());
-        }
-        if (mPrimeMinFreq != null && mPrimeMaxFreq != null) {
-            mKernelUtils.setPrimeClusterFrequency(
-                mPrimeMinFreq.getValue(), mPrimeMaxFreq.getValue());
-        }
+
+        // Write on a worker thread so the UI is not blocked by the sysfs writes.
+        new Thread(() -> {
+            boolean success = true;
+
+            if (governor != null) {
+                success &= mKernelUtils.setGovernor(governor);
+            }
+            for (int i = 0; i < clusterCount; i++) {
+                if (minFreqs[i] != null && maxFreqs[i] != null) {
+                    success &= mKernelUtils.setFrequencyRange(clusters[i],
+                            minFreqs[i], maxFreqs[i]);
+                }
+            }
+
+            // Persist exactly what was requested, and only if it was written. A failed
+            // apply must not be restored on the next boot.
+            if (success) {
+                mKernelUtils.saveAppliedSettings(appContext, governor, minFreqs, maxFreqs);
+            }
+
+            final boolean result = success;
+            mHandler.post(() -> {
+                if (!isAdded()) {
+                    return;
+                }
+                loadCurrentSettings();
+                showToast(result ? R.string.settings_applied : R.string.settings_apply_failed);
+            });
+        }, "KamisApplyCpu").start();
     }
 
     private void resetSettings() {
-        mKernelUtils.resetToDefaults();
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+
+        // Resetting also stops the saved settings from being restored on the next boot.
+        boolean success = mKernelUtils.resetToDefaults(context);
         loadCurrentSettings();
-        Toast.makeText(getContext(), R.string.settings_reset, Toast.LENGTH_SHORT).show();
+        showToast(success ? R.string.settings_reset : R.string.settings_reset_failed);
+    }
+
+    private static String getValue(ListPreference preference) {
+        return preference != null ? preference.getValue() : null;
+    }
+
+    private Long parseFrequency(String frequency) {
+        if (frequency == null) {
+            return null;
+        }
+        try {
+            long value = Long.parseLong(frequency.trim());
+            return value > 0 ? value : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String formatFrequency(String frequency) {
+        Long value = parseFrequency(frequency);
+        if (value == null) {
+            return getString(R.string.value_unavailable);
+        }
+        return (value / 1000) + " MHz";
+    }
+
+    private void showToast(int messageResId) {
+        Context context = getContext();
+        if (context != null) {
+            Toast.makeText(context, messageResId, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private static final class ClusterPreferences {
+        final int cluster;
+        final ListPreference minPreference;
+        final ListPreference maxPreference;
+
+        ClusterPreferences(int cluster, ListPreference minPreference,
+                ListPreference maxPreference) {
+            this.cluster = cluster;
+            this.minPreference = minPreference;
+            this.maxPreference = maxPreference;
+        }
     }
 }

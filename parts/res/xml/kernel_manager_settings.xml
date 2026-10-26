@@ -43,11 +43,11 @@
         <Preference
             android:key="apply_settings"
             android:title="@string/apply_settings"
-            android:summary="Apply current frequency and governor settings" />
+            android:summary="@string/apply_settings_summary" />
         <Preference
             android:key="reset_settings"
             android:title="@string/reset_settings"
-            android:summary="Reset all settings to default values" />
+            android:summary="@string/reset_settings_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/kernel_info_category">

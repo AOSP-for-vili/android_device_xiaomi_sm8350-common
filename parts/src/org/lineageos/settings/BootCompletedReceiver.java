@@ -22,10 +22,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 import android.content.SharedPreferences;
-import android.os.SystemProperties;
+import android.os.SystemClock;
 import androidx.preference.PreferenceManager;
 
 import org.lineageos.settings.doze.DozeUtils;
+import org.lineageos.settings.gpumanager.GpuManagerUtils;
+import org.lineageos.settings.kernelmanager.KernelManagerUtils;
 import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
 import org.lineageos.settings.utils.FileUtils;
@@ -38,11 +40,25 @@ public class BootCompletedReceiver extends BroadcastReceiver {
     private static final String HTSR_ENABLE_KEY = "htsr_enable";
     private static final String HTSR_FILE = "/sys/devices/virtual/touch/touch_dev/bump_sample_rate";
 
+    // init starts the kernel post-boot script when sys.boot_completed is set, which happens
+    // around the same time ACTION_BOOT_COMPLETED is sent. Give it time to finish before the
+    // Kamis Stuff settings are restored, then apply them a second time to be safe.
+    private static final long POST_BOOT_SETTLE_MS = 2500;
+    private static final long POST_BOOT_REAPPLY_DELAY_MS = 1500;
+
     @Override
     public void onReceive(final Context context, Intent intent) {
-    SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
         if (DEBUG)
             Log.d(TAG, "Received boot completed intent");
+
+        // The kernel post-boot script rewrites the CPU/GPU limits, so restoring our values
+        // has to wait until it has run.
+        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+            restoreSettingsAfterPostBoot(context);
+            return;
+        }
+
         DozeUtils.onBootCompleted(context);
         ThermalUtils.startService(context);
         RefreshUtils.startService(context);    
@@ -55,5 +71,32 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         FileUtils.enableService(context);
         boolean dcDimmingEnabled = sharedPrefs.getBoolean(DC_DIMMING_ENABLE_KEY, false);
         FileUtils.writeLine(DC_DIMMING_NODE, dcDimmingEnabled ? "1" : "0");
+    }
+
+    /**
+     * Waits for the kernel post-boot script, then restores the CPU/GPU settings the user
+     * applied through Kamis Stuff.
+     */
+    private void restoreSettingsAfterPostBoot(final Context context) {
+        final PendingResult pendingResult = goAsync();
+        final Context appContext = context.getApplicationContext();
+
+        new Thread(() -> {
+            try {
+                SystemClock.sleep(POST_BOOT_SETTLE_MS);
+                KernelManagerUtils.restoreSavedSettingsOnBoot(appContext);
+                GpuManagerUtils.restoreSavedSettingsOnBoot(appContext);
+
+                SystemClock.sleep(POST_BOOT_REAPPLY_DELAY_MS);
+                KernelManagerUtils.reapplySavedSettings(appContext);
+                GpuManagerUtils.reapplySavedSettings(appContext);
+
+                Log.i(TAG, "Kamis Stuff settings restored after boot");
+            } catch (Throwable t) {
+                Log.e(TAG, "Failed to restore Kamis Stuff settings", t);
+            } finally {
+                pendingResult.finish();
+            }
+        }, "KamisSettingsRestore").start();
     }
 }

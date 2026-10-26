@@ -77,11 +77,11 @@
         <Preference
             android:key="apply_gpu_settings"
             android:title="@string/apply_settings"
-            android:summary="Apply current GPU settings" />
+            android:summary="@string/gpu_apply_settings_summary" />
         <Preference
             android:key="reset_gpu_settings"
             android:title="@string/reset_settings"
-            android:summary="Reset all GPU settings to default values" />
+            android:summary="@string/gpu_reset_settings_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/kernel_info_category">
