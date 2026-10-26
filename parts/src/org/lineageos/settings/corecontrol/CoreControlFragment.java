@@ -57,7 +57,10 @@ public class CoreControlFragment extends PreferenceFragment implements Preferenc
                     Toast.makeText(getContext(), "At least 2 little cores must remain online", Toast.LENGTH_SHORT).show();
                     return false;
                 }
-                setCoreState(i, requestedState);
+                if (!setCoreState(i, requestedState)) {
+                    Toast.makeText(getContext(), "Unable to change CPU core state", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
                 return true;
             }
         }
@@ -69,8 +72,8 @@ public class CoreControlFragment extends PreferenceFragment implements Preferenc
                readFile("/sys/devices/system/cpu/cpu" + core + "/online").equals("1");
     }
 
-    private void setCoreState(int core, boolean online) {
-        writeFile("/sys/devices/system/cpu/cpu" + core + "/online", online ? "1" : "0");
+    private boolean setCoreState(int core, boolean online) {
+        return writeFile("/sys/devices/system/cpu/cpu" + core + "/online", online ? "1" : "0");
     }
 
     private boolean canOffline(int core) {
@@ -93,11 +96,13 @@ public class CoreControlFragment extends PreferenceFragment implements Preferenc
         }
     }
 
-    private void writeFile(String path, String value) {
+    private boolean writeFile(String path, String value) {
         try {
             java.nio.file.Files.write(new File(path).toPath(), value.getBytes());
+            return true;
         } catch (Exception e) {
             Log.e(TAG, "Failed to write " + path, e);
+            return false;
         }
     }
 }
